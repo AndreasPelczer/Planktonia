@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🥒 Gurkistan – Landkarte</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=VT323&family=Caveat:wght@400;700&display=swap');
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        /* ========== SHARED STYLES ========== */
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 12px;
+            transition: background 0.5s, color 0.5s;
+        }
+
+        .container {
+            max-width: 750px;
+            width: 100%;
+        }
+
+        /* ========== TOGGLE BUTTON ========== */
+        .toggle-container {
+            position: fixed;
+            top: 15px;
+            right: 15px;
+            z-index: 1000;
+        }
+        .toggle-btn {
+            font-family: 'VT323', monospace;
+            font-size: 1rem;
+            padding: 8px 16px;
+            border: 2px solid;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .toggle-btn:hover {
+            transform: scale(1.05);
+        }
+        .toggle-icon {
+            font-size: 1.2rem;
+        }
+
+        /* ========== TAKTISCH MODE ========== */
+        body.mode-taktisch {
+            background: #050a06;
+            color: #e0e0e0;
+            font-family: 'VT323', 'Courier New', monospace;
+        }
+        body.mode-taktisch::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: repeating-linear-gradient(
+                transparent, transparent 2px,
+                rgba(0,0,0,0.05) 2px, rgba(0,0,0,0.05) 4px
+            );
+            pointer-events: none;
+            z-index: 999;
+        }
+        body.mode-taktisch::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.55) 100%);
+            pointer-events: none;
+            z-index: 998;
+        }
+        .mode-taktisch .toggle-btn {
+            background: #0a1a0e;
+            color: #4a7;
+            border-color: #2a5a3a;
+        }
+        .mode-taktisch .toggle-btn:hover {
+            background: #1a3020;
+            border-color: #4a7;
+        }
+
+        /* ========== ANTON MODE ========== */
+        body.mode-anton {
+            background: #f5f3e8;
+            color: #1a1a1a;
+            font-family: 'Caveat', cursive;
+            background-image:
+                url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.08'/%3E%3C/svg%3E");
+        }
+        .mode-anton .toggle-btn {
+            background: #fff;
+            color: #1a1a1a;
+            border-color: #1a1a1a;
+            font-family: 'Caveat', cursive;
+            font-size: 1.2rem;
+        }
+        .mode-anton .toggle-btn:hover {
+            background: #f0f0e5;
+        }
+
+        /* ========== MAP CONTAINERS ========== */
+        .map-taktisch,
+        .map-anton {
+            display: none;
+        }
+        .mode-taktisch .map-taktisch {
+            display: block;
+        }
+        .mode-anton .map-anton {
+            display: block;
+        }
+
+        /* ========================================== */
+        /* TAKTISCH STYLES */
+        /* ========================================== */
+        .taktisch-header {
+            text-align: center;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #1a3020;
+        }
+        .taktisch-header h1 {
+            font-size: 1.5rem;
+            color: #4a7;
+            letter-spacing: 6px;
+            text-shadow: 0 0 20px rgba(68,170,119,0.35);
+        }
+        .taktisch-header .sub {
+            font-size: 1.05rem;
+            color: #2a5a3a;
+            letter-spacing: 2px;
+        }
+        .taktisch-header .coords {
+            font-size: 0.85rem;
+            color: #193828;
+            margin-top: 2px;
+        }
+
+        .taktisch-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 18px;
+            justify-content: center;
+            margin-bottom: 10px;
+            padding: 6px 10px;
+            border: 1px solid #1a3020;
+            background: #080e09;
+            font-size: 0.95rem;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            color: #3a6a4a;
+        }
+        .legend-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .legend-line {
+            width: 20px;
+            height: 2px;
+            display: inline-block;
+        }
+
+        .taktisch-frame {
+            border: 1px solid #2a5a3a;
+            background: #060d08;
+            padding: 4px;
+            position: relative;
+            box-shadow: 0 0 30px rgba(68,170,119,0.08) inset;
+        }
+        .taktisch-frame::before {
+            content: 'TAKTISCHE ÜBERSICHT // GURKISTAN KOMMANDOZENTRALE';
+            position: absolute;
+            top: -18px;
+            left: 8px;
+            font-size: 0.75rem;
+            color: #1a3828;
+            letter-spacing: 1px;
+        }
+
+        .taktisch-info {
+            margin-top: 10px;
+            border: 1px solid #1a3020;
+            background: #080e09;
+            padding: 12px 14px;
+            min-height: 90px;
+            transition: border-color 0.3s;
+        }
+        .taktisch-info.active {
+            border-color: #4a7;
+        }
+        .taktisch-info .info-title {
+            font-size: 1.3rem;
+            color: #4a7;
+            margin-bottom: 4px;
+            text-shadow: 0 0 8px rgba(68,170,119,0.3);
+        }
+        .taktisch-info .info-type {
+            font-size: 0.9rem;
+            color: #2a5a3a;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        .taktisch-info .info-desc {
+            font-size: 1.05rem;
+            color: #5a8a6a;
+            line-height: 1.5;
+        }
+        .taktisch-info .info-resources {
+            margin-top: 6px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px 14px;
+        }
+        .info-res-item {
+            font-size: 0.95rem;
+            color: #3a7a5a;
+        }
+
+        .taktisch-footer {
+            text-align: center;
+            margin-top: 12px;
+            padding-top: 8px;
+            border-top: 1px solid #1a3020;
+            font-size: 0.85rem;
+            color: #193828;
+        }
+
+        /* Taktisch SVG Styles */
+        .grid-line { stroke: #0e1a10; stroke-width: 0.5; }
+        .grid-border { stroke: #1a3020; stroke-width: 1.5; fill: none; }
+
+        .route-trade {
+            stroke: #1a4a2a;
+            stroke-width: 1.2;
+            stroke-dasharray: 6 4;
+            fill: none;
+            opacity: 0.6;
+            transition: opacity 0.3s, stroke 0.3s;
+        }
+        .route-pilgrim {
+            stroke: #5a3a1a;
+            stroke-width: 1.5;
+            stroke-dasharray: 3 3;
+            fill: none;
+            opacity: 0.7;
+            transition: opacity 0.3s, stroke 0.3s;
+        }
+
+        .t-loc-group { cursor: pointer; }
+        .t-loc-group:hover .loc-ring { opacity: 1; }
+        .t-loc-group:hover .loc-label { fill: #8fc; }
+
+        .loc-dot { transition: r 0.2s; }
+        .loc-ring {
+            fill: none;
+            stroke-width: 1;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .loc-label {
+            font-family: 'VT323', 'Courier New', monospace;
+            font-size: 11px;
+            fill: #4a7;
+            transition: fill 0.2s;
+        }
+
+        .loc-capital .loc-dot { fill: #6fc; }
+        .loc-capital .loc-ring { stroke: #6fc; }
+        .loc-holy .loc-dot { fill: #da4; }
+        .loc-holy .loc-ring { stroke: #da4; }
+        .loc-town .loc-dot { fill: #4a7; }
+        .loc-town .loc-ring { stroke: #4a7; }
+        .loc-outpost .loc-dot { fill: #3a6a4a; }
+        .loc-outpost .loc-ring { stroke: #3a6a4a; }
+
+        .loc-holy .loc-dot {
+            animation: holy-pulse 3s ease-in-out infinite;
+        }
+        @keyframes holy-pulse {
+            0%, 100% { opacity: 1; filter: drop-shadow(0 0 2px #da4); }
+            50% { opacity: 0.7; filter: drop-shadow(0 0 8px #da4); }
+        }
+
+        .loc-capital .loc-dot {
+            animation: capital-pulse 4s ease-in-out infinite;
+        }
+        @keyframes capital-pulse {
+            0%, 100% { filter: drop-shadow(0 0 3px #6fc); }
+            50% { filter: drop-shadow(0 0 12px #6fc); }
+        }
+
+        .t-loc-group.selected .loc-ring {
+            opacity: 1;
+            stroke-width: 1.5;
+        }
+        .t-loc-group.selected .loc-label {
+            fill: #fff;
+        }
+
+        .radar-sweep {
+            transform-origin: 350px 240px;
+            animation: sweep 8s linear infinite;
+        }
+        @keyframes sweep {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .compass-text {
+            font-family: 'VT323', monospace;
+            font-size: 10px;
+            fill: #2a5a3a;
+        }
+        .scale-text {
+            font-family: 'VT323', monospace;
+            font-size: 9px;
+            fill: #1a3828;
+        }
+
+        @keyframes tradeMove {
+            0% { offset-distance: 0%; opacity: 0; }
+            5% { opacity: 0.9; }
+            95% { opacity: 0.9; }
+            100% { offset-distance: 100%; opacity: 0; }
+        }
+
+        /* ========================================== */
+        /* ANTON STYLES */
+        /* ========================================== */
+        .anton-header {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        .anton-header h1 {
+            font-size: 3rem;
+            color: #1a1a1a;
+            font-weight: 700;
+            letter-spacing: 2px;
+            transform: rotate(-1deg);
+        }
+        .anton-header .sub {
+            font-size: 1.4rem;
+            color: #444;
+            margin-top: -5px;
+            transform: rotate(0.5deg);
+        }
+
+        .anton-frame {
+            background: #fff;
+            border: 3px solid #1a1a1a;
+            border-radius: 2px;
+            padding: 10px;
+            position: relative;
+            transform: rotate(-0.3deg);
+            box-shadow:
+                4px 4px 0 #1a1a1a,
+                8px 8px 20px rgba(0,0,0,0.15);
+        }
+        .anton-frame::before {
+            content: '';
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%) rotate(1deg);
+            width: 80px;
+            height: 24px;
+            background: rgba(200, 180, 120, 0.6);
+            border: 1px solid rgba(150, 130, 80, 0.4);
+        }
+
+        .hand-label {
+            font-family: 'Caveat', cursive;
+            font-size: 16px;
+            fill: #1a1a1a;
+        }
+        .hand-label-small {
+            font-family: 'Caveat', cursive;
+            font-size: 12px;
+            fill: #555;
+        }
+        .hand-label-title {
+            font-family: 'Caveat', cursive;
+            font-size: 22px;
+            fill: #1a1a1a;
+            font-weight: 700;
+        }
+
+        .sketch-line {
+            stroke: #1a1a1a;
+            stroke-width: 2;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        .sketch-line-thin {
+            stroke: #1a1a1a;
+            stroke-width: 1;
+            fill: none;
+            stroke-linecap: round;
+            stroke-dasharray: 8 4;
+        }
+        .sketch-line-dotted {
+            stroke: #666;
+            stroke-width: 1.5;
+            fill: none;
+            stroke-linecap: round;
+            stroke-dasharray: 2 6;
+        }
+
+        .anton-info {
+            margin-top: 15px;
+            background: #fff;
+            border: 2px solid #1a1a1a;
+            padding: 15px 20px;
+            transform: rotate(0.3deg);
+            box-shadow: 3px 3px 0 #1a1a1a;
+        }
+        .anton-info .info-title {
+            font-size: 1.8rem;
+            color: #1a1a1a;
+            border-bottom: 2px solid #1a1a1a;
+            padding-bottom: 5px;
+            margin-bottom: 8px;
+        }
+        .anton-info .info-desc {
+            font-size: 1.3rem;
+            color: #333;
+            line-height: 1.4;
+        }
+
+        .anton-footer {
+            margin-top: 15px;
+            font-size: 1.1rem;
+            color: #666;
+            text-align: center;
+            transform: rotate(-0.5deg);
+        }
+
+        /* Anton location hover */
+        .a-loc-group {
+            cursor: pointer;
+        }
+        .a-loc-group .loc-icon {
+            transition: transform 0.2s;
+            transform-origin: center center;
+            transform-box: fill-box;
+        }
+        .a-loc-group:hover .loc-icon {
+            transform: scale(1.15);
+        }
+        .a-loc-group:hover .hand-label,
+        .a-loc-group:hover .hand-label-title {
+            fill: #000;
+            font-weight: 700;
+        }
+
+        /* Gurken-Animation */
+        @keyframes wobble {
+            0%, 100% { transform: rotate(-3deg); }
+            50% { transform: rotate(3deg); }
+        }
+        .cucumber-body {
+            animation: wobble 2s ease-in-out infinite;
+            transform-origin: center bottom;
+            transform-box: fill-box;
+        }
+
+        .doodle {
+            opacity: 0.6;
+        }
+
+        /* SVG shared */
+        svg {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+    </style>
+</head>
+<body class="mode-anton">
+    <!-- TOGGLE BUTTON -->
+    <div class="toggle-container">
+        <button class="toggle-btn" id="toggle-btn" onclick="toggleMode()">
+            <span class="toggle-icon">🗺️</span>
+            <span id="toggle-text">Taktisch</span>
+        </button>
+    </div>
+
+    <div class="container">
+        <!-- ========================================== -->
+        <!-- ANTON MAP -->
+        <!-- ========================================== -->
+        <div class="map-anton">
+            <div class="anton-header">
+                <h1>GURKISTAN</h1>
+                <div class="sub">~ die offizielle Landkarte ~</div>
+            </div>
+
+            <div class="anton-frame">
+                <svg viewBox="0 0 700 500" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <filter id="sketchy" x="-10%" y="-10%" width="120%" height="120%">
+                            <feTurbulence type="turbulence" baseFrequency="0.03" numOctaves="3" result="noise"/>
+                            <feDisplacementMap in="SourceGraphic" in2="noise" scale="2" xChannelSelector="R" yChannelSelector="G"/>
+                        </filter>
+                        <pattern id="paper" patternUnits="userSpaceOnUse" width="100" height="100">
+                            <rect width="100" height="100" fill="#faf8f0"/>
+                            <circle cx="50" cy="50" r="1" fill="#e8e4d8" opacity="0.5"/>
+                        </pattern>
+                    </defs>
+
+                    <rect width="700" height="500" fill="url(#paper)"/>
+
+                    <!-- Raum-Umriss -->
+                    <path d="M 80 60 Q 85 55, 620 58 Q 628 62, 625 440 Q 622 448, 78 445 Q 72 440, 80 60"
+                          class="sketch-line" stroke-width="3" filter="url(#sketchy)"/>
+
+                    <!-- Deutschland Labels -->
+                    <text x="30" y="250" class="hand-label-small" transform="rotate(-90, 30, 250)">← Deutschland</text>
+                    <text x="670" y="250" class="hand-label-small" transform="rotate(90, 670, 250)">Deutschland →</text>
+                    <text x="350" y="30" class="hand-label-small" text-anchor="middle">↑ auch Deutschland</text>
+                    <text x="350" y="485" class="hand-label-small" text-anchor="middle">↓ Deutschland (überall!)</text>
+
+                    <!-- Handelsrouten -->
+                    <path d="M 350 120 Q 300 150, 160 200" class="sketch-line-thin" filter="url(#sketchy)"/>
+                    <path d="M 350 120 Q 400 150, 540 190" class="sketch-line-thin" filter="url(#sketchy)"/>
+                    <path d="M 350 120 L 350 260" class="sketch-line-thin" filter="url(#sketchy)"/>
+                    <path d="M 350 290 L 350 380" class="sketch-line-thin" filter="url(#sketchy)"/>
+                    <path d="M 160 220 Q 150 300, 155 360" class="sketch-line-thin" filter="url(#sketchy)"/>
+                    <path d="M 540 210 Q 560 280, 555 340" class="sketch-line-thin" filter="url(#sketchy)"/>
+
+                    <!-- Pilgerweg -->
+                    <path d="M 340 280 Q 250 320, 165 365" class="sketch-line-dotted" filter="url(#sketchy)"/>
+                    <path d="M 175 380 Q 260 410, 340 400" class="sketch-line-dotted" filter="url(#sketchy)"/>
+                    <path d="M 360 390 Q 365 340, 360 290" class="sketch-line-dotted" filter="url(#sketchy)"/>
+                    <text x="240" y="350" class="hand-label-small" transform="rotate(-15, 240, 350)">Pilgerweg</text>
+
+                    <!-- SESSLINGEN -->
+                    <g class="a-loc-group" data-loc="sesslingen" transform="translate(350, 105)">
+                        <g class="loc-icon">
+                            <path d="M -20 -5 Q -22 -25, -15 -30 L 15 -30 Q 22 -25, 20 -5 L 20 15 Q 15 20, -15 20 L -20 15 Z"
+                                  fill="none" stroke="#1a1a1a" stroke-width="2" filter="url(#sketchy)"/>
+                            <path d="M -15 20 L -18 35 M 15 20 L 18 35" stroke="#1a1a1a" stroke-width="2"/>
+                            <path d="M -10 -35 L -8 -42 L 0 -38 L 8 -42 L 10 -35" fill="none" stroke="#1a1a1a" stroke-width="1.5"/>
+                        </g>
+                        <rect x="-35" y="-50" width="70" height="130" fill="transparent"/>
+                        <text x="0" y="55" class="hand-label-title" text-anchor="middle">Sesslingen</text>
+                        <text x="0" y="72" class="hand-label-small" text-anchor="middle">(Hauptstadt!)</text>
+                    </g>
+
+                    <!-- HEIZUNGSTAL -->
+                    <g class="a-loc-group" data-loc="heizungstal" transform="translate(350, 270)">
+                        <g class="loc-icon">
+                            <rect x="-25" y="-20" width="50" height="40" rx="3" fill="none" stroke="#1a1a1a" stroke-width="2" filter="url(#sketchy)"/>
+                            <line x1="-15" y1="-20" x2="-15" y2="20" stroke="#1a1a1a" stroke-width="1.5"/>
+                            <line x1="0" y1="-20" x2="0" y2="20" stroke="#1a1a1a" stroke-width="1.5"/>
+                            <line x1="15" y1="-20" x2="15" y2="20" stroke="#1a1a1a" stroke-width="1.5"/>
+                            <path d="M -20 -30 Q -15 -35, -20 -40" stroke="#1a1a1a" stroke-width="1" fill="none"/>
+                            <path d="M 0 -30 Q 5 -38, 0 -45" stroke="#1a1a1a" stroke-width="1" fill="none"/>
+                            <path d="M 20 -30 Q 25 -35, 20 -40" stroke="#1a1a1a" stroke-width="1" fill="none"/>
+                            <text x="35" y="-25" style="font-size: 20px;">✧</text>
+                        </g>
+                        <rect x="-40" y="-50" width="90" height="130" fill="transparent"/>
+                        <text x="0" y="60" class="hand-label" text-anchor="middle">Heizungstal</text>
+                        <text x="0" y="75" class="hand-label-small" text-anchor="middle">⚡ Heiligtum</text>
+                    </g>
+
+                    <!-- SKATINGA -->
+                    <g class="a-loc-group" data-loc="skatinga" transform="translate(150, 195)">
+                        <g class="loc-icon">
+                            <ellipse cx="0" cy="0" rx="30" ry="8" fill="none" stroke="#1a1a1a" stroke-width="2" filter="url(#sketchy)"/>
+                            <circle cx="-18" cy="10" r="5" fill="none" stroke="#1a1a1a" stroke-width="1.5"/>
+                            <circle cx="18" cy="10" r="5" fill="none" stroke="#1a1a1a" stroke-width="1.5"/>
+                        </g>
+                        <rect x="-40" y="-20" width="80" height="70" fill="transparent"/>
+                        <text x="0" y="35" class="hand-label" text-anchor="middle">Skatinga</text>
+                    </g>
+
+                    <!-- LAMPINGEN -->
+                    <g class="a-loc-group" data-loc="lampingen" transform="translate(550, 190)">
+                        <g class="loc-icon">
+                            <path d="M 0 -35 L 0 -20" stroke="#1a1a1a" stroke-width="2"/>
+                            <path d="M -15 -20 Q -20 0, -10 15 L 10 15 Q 20 0, 15 -20 Z" fill="none" stroke="#1a1a1a" stroke-width="2" filter="url(#sketchy)"/>
+                            <line x1="-25" y1="0" x2="-35" y2="-5" stroke="#1a1a1a" stroke-width="1"/>
+                            <line x1="25" y1="0" x2="35" y2="-5" stroke="#1a1a1a" stroke-width="1"/>
+                            <line x1="0" y1="20" x2="0" y2="30" stroke="#1a1a1a" stroke-width="1"/>
+                        </g>
+                        <rect x="-40" y="-45" width="80" height="110" fill="transparent"/>
+                        <text x="0" y="50" class="hand-label" text-anchor="middle">Lampingen</text>
+                    </g>
+
+                    <!-- HOCKERHAUSEN -->
+                    <g class="a-loc-group" data-loc="hockerhausen" transform="translate(155, 375)">
+                        <g class="loc-icon">
+                            <rect x="-20" y="-15" width="40" height="8" rx="2" fill="none" stroke="#1a1a1a" stroke-width="2" filter="url(#sketchy)"/>
+                            <line x1="-15" y1="-7" x2="-18" y2="15" stroke="#1a1a1a" stroke-width="2"/>
+                            <line x1="15" y1="-7" x2="18" y2="15" stroke="#1a1a1a" stroke-width="2"/>
+                            <text x="30" y="-10" style="font-size: 18px;">✧</text>
+                        </g>
+                        <rect x="-35" y="-25" width="80" height="95" fill="transparent"/>
+                        <text x="0" y="40" class="hand-label" text-anchor="middle">Hockerhausen</text>
+                        <text x="0" y="55" class="hand-label-small" text-anchor="middle">🪑 Heiligtum</text>
+                    </g>
+
+                    <!-- BAD BODEN -->
+                    <g class="a-loc-group" data-loc="badboden" transform="translate(555, 345)">
+                        <g class="loc-icon">
+                            <ellipse cx="0" cy="0" rx="25" ry="12" fill="none" stroke="#1a1a1a" stroke-width="2" filter="url(#sketchy)"/>
+                            <path d="M -15 0 Q -10 -5, -5 0 Q 0 5, 5 0 Q 10 -5, 15 0" stroke="#1a1a1a" stroke-width="1" fill="none"/>
+                        </g>
+                        <rect x="-35" y="-20" width="70" height="85" fill="transparent"/>
+                        <text x="0" y="35" class="hand-label" text-anchor="middle">Bad Boden</text>
+                        <text x="0" y="50" class="hand-label-small" text-anchor="middle">(Kurort)</text>
+                    </g>
+
+                    <!-- FENSTERDORF -->
+                    <g class="a-loc-group" data-loc="fensterdorf" transform="translate(350, 395)">
+                        <g class="loc-icon">
+                            <rect x="-22" y="-25" width="44" height="35" rx="2" fill="none" stroke="#1a1a1a" stroke-width="2" filter="url(#sketchy)"/>
+                            <line x1="0" y1="-25" x2="0" y2="10" stroke="#1a1a1a" stroke-width="1.5"/>
+                            <line x1="-22" y1="-7" x2="22" y2="-7" stroke="#1a1a1a" stroke-width="1.5"/>
+                            <path d="M -22 -25 Q -28 -15, -25 10" stroke="#1a1a1a" stroke-width="1" fill="none"/>
+                            <path d="M 22 -25 Q 28 -15, 25 10" stroke="#1a1a1a" stroke-width="1" fill="none"/>
+                            <text x="30" y="-20" style="font-size: 18px;">✧</text>
+                        </g>
+                        <rect x="-40" y="-35" width="90" height="95" fill="transparent"/>
+                        <text x="0" y="30" class="hand-label" text-anchor="middle">Fensterdorf</text>
+                        <text x="0" y="45" class="hand-label-small" text-anchor="middle">🪟 Portal zur Außenwelt</text>
+                    </g>
+
+                    <!-- GURKEN-BÜRGER -->
+                    <g transform="translate(310, 130)">
+                        <g class="cucumber-body">
+                            <ellipse cx="0" cy="0" rx="6" ry="12" fill="none" stroke="#1a1a1a" stroke-width="1.5" transform="rotate(-10)"/>
+                            <circle cx="-2" cy="-4" r="1" fill="#1a1a1a"/>
+                            <circle cx="3" cy="-4" r="1" fill="#1a1a1a"/>
+                            <path d="M -2 2 Q 0 4, 2 2" stroke="#1a1a1a" stroke-width="0.8" fill="none"/>
+                        </g>
+                    </g>
+                    <g transform="translate(390, 255)">
+                        <g class="cucumber-body" style="animation-delay: -0.5s;">
+                            <ellipse cx="0" cy="0" rx="5" ry="10" fill="none" stroke="#1a1a1a" stroke-width="1.5" transform="rotate(5)"/>
+                            <circle cx="-1" cy="-3" r="1" fill="#1a1a1a"/>
+                            <circle cx="2" cy="-3" r="1" fill="#1a1a1a"/>
+                            <path d="M -1 1 Q 0 3, 1 1" stroke="#1a1a1a" stroke-width="0.8" fill="none"/>
+                        </g>
+                    </g>
+                    <g transform="translate(250, 300)">
+                        <g class="cucumber-body" style="animation-delay: -1s;">
+                            <ellipse cx="0" cy="0" rx="5" ry="11" fill="none" stroke="#1a1a1a" stroke-width="1.5" transform="rotate(-5)"/>
+                            <circle cx="-1" cy="-4" r="1" fill="#1a1a1a"/>
+                            <circle cx="2" cy="-4" r="1" fill="#1a1a1a"/>
+                            <line x1="-2" y1="10" x2="-4" y2="18" stroke="#1a1a1a" stroke-width="1"/>
+                            <line x1="2" y1="10" x2="5" y2="17" stroke="#1a1a1a" stroke-width="1"/>
+                        </g>
+                    </g>
+                    <g transform="translate(520, 215)">
+                        <g class="cucumber-body" style="animation-delay: -1.5s;">
+                            <ellipse cx="0" cy="0" rx="5" ry="10" fill="none" stroke="#1a1a1a" stroke-width="1.5"/>
+                            <circle cx="-1" cy="-3" r="1" fill="#1a1a1a"/>
+                            <circle cx="2" cy="-3" r="1" fill="#1a1a1a"/>
+                        </g>
+                    </g>
+
+                    <!-- KRITZELEIEN -->
+                    <g class="doodle" transform="translate(450, 85)">
+                        <path d="M 0 0 L 30 15" stroke="#1a1a1a" stroke-width="1"/>
+                        <path d="M 25 10 L 30 15 L 24 18" stroke="#1a1a1a" stroke-width="1" fill="none"/>
+                        <text x="35" y="20" class="hand-label-small">← hier!</text>
+                    </g>
+
+                    <!-- Kompass -->
+                    <g transform="translate(620, 440)">
+                        <circle cx="0" cy="0" r="20" fill="none" stroke="#1a1a1a" stroke-width="1.5" filter="url(#sketchy)"/>
+                        <line x1="0" y1="-15" x2="0" y2="15" stroke="#1a1a1a" stroke-width="1"/>
+                        <line x1="-15" y1="0" x2="15" y2="0" stroke="#1a1a1a" stroke-width="1"/>
+                        <text x="0" y="-22" class="hand-label-small" text-anchor="middle">N</text>
+                        <text x="0" y="32" class="hand-label-small" text-anchor="middle">S</text>
+                    </g>
+
+                    <!-- Maßstab -->
+                    <g transform="translate(100, 450)">
+                        <line x1="0" y1="0" x2="60" y2="0" stroke="#1a1a1a" stroke-width="1.5"/>
+                        <line x1="0" y1="-5" x2="0" y2="5" stroke="#1a1a1a" stroke-width="1.5"/>
+                        <line x1="60" y1="-5" x2="60" y2="5" stroke="#1a1a1a" stroke-width="1.5"/>
+                        <text x="30" y="18" class="hand-label-small" text-anchor="middle">~1 Meter</text>
+                    </g>
+
+                    <text x="550" y="470" class="hand-label-small" transform="rotate(-2, 550, 470)">(nicht maßstabsgetreu)</text>
+
+                    <g class="doodle" transform="translate(120, 100)">
+                        <text class="hand-label-small">Fläche:</text>
+                        <text y="15" class="hand-label" style="font-size: 18px;">6 m²</text>
+                        <text y="30" class="hand-label-small">(exakt!)</text>
+                    </g>
+                </svg>
+            </div>
+
+            <div class="anton-info" id="anton-info">
+                <div class="info-title" id="anton-title">📍 Klick auf einen Ort!</div>
+                <div class="info-desc" id="anton-desc">
+                    Diese Karte zeigt alle wichtigen Orte der Republik Gurkistan.
+                    Gezeichnet von Hand, wie es sich gehört.
+                </div>
+            </div>
+
+            <div class="anton-footer">
+                "Die Karte ist das Territorium. Das Territorium ist 6m²." — Verfassung §7<br>
+                <span style="font-size: 0.9rem; color: #888;">Hamburg-Niendorf · 53°37'N 9°57'E</span>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- TAKTISCH MAP -->
+        <!-- ========================================== -->
+        <div class="map-taktisch">
+            <div class="taktisch-header">
+                <h1>GURKISTAN</h1>
+                <div class="sub">TAKTISCHE KARTE · RADAR-MODUS</div>
+                <div class="coords">53°37'N 9°57'E · 6m² · Hamburg-Niendorf</div>
+            </div>
+
+            <div class="taktisch-legend">
+                <div class="legend-item"><span class="legend-dot" style="background:#6fc"></span> Hauptstadt</div>
+                <div class="legend-item"><span class="legend-dot" style="background:#da4"></span> Heiligtum</div>
+                <div class="legend-item"><span class="legend-dot" style="background:#4a7"></span> Siedlung</div>
+                <div class="legend-item"><span class="legend-dot" style="background:#3a6a4a"></span> Außenposten</div>
+                <div class="legend-item"><span class="legend-line" style="background:#1a4a2a"></span> Handelsroute</div>
+                <div class="legend-item"><span class="legend-line" style="background:#5a3a1a"></span> Pilgerweg</div>
+            </div>
+
+            <div class="taktisch-frame">
+                <svg viewBox="0 0 700 480" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="sweepGrad" gradientTransform="rotate(90)">
+                            <stop offset="0%" stop-color="rgba(68,170,119,0.12)" />
+                            <stop offset="100%" stop-color="rgba(68,170,119,0)" />
+                        </linearGradient>
+                        <filter id="glow">
+                            <feGaussianBlur stdDeviation="2" result="blur" />
+                            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+                        </filter>
+                        <filter id="holyGlow">
+                            <feGaussianBlur stdDeviation="3" result="blur" />
+                            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+                        </filter>
+                    </defs>
+
+                    <!-- GRID -->
+                    <line x1="100" y1="20" x2="100" y2="460" class="grid-line" />
+                    <line x1="200" y1="20" x2="200" y2="460" class="grid-line" />
+                    <line x1="300" y1="20" x2="300" y2="460" class="grid-line" />
+                    <line x1="400" y1="20" x2="400" y2="460" class="grid-line" />
+                    <line x1="500" y1="20" x2="500" y2="460" class="grid-line" />
+                    <line x1="600" y1="20" x2="600" y2="460" class="grid-line" />
+                    <line x1="40" y1="80" x2="660" y2="80" class="grid-line" />
+                    <line x1="40" y1="160" x2="660" y2="160" class="grid-line" />
+                    <line x1="40" y1="240" x2="660" y2="240" class="grid-line" />
+                    <line x1="40" y1="320" x2="660" y2="320" class="grid-line" />
+                    <line x1="40" y1="400" x2="660" y2="400" class="grid-line" />
+                    <rect x="40" y="20" width="620" height="440" class="grid-border" rx="2" />
+
+                    <!-- RADAR SWEEP -->
+                    <g class="radar-sweep" opacity="0.3">
+                        <path d="M 350,240 L 350,20 A 220,220 0 0,1 520,120 Z" fill="url(#sweepGrad)" />
+                    </g>
+
+                    <!-- RADAR RINGS -->
+                    <circle cx="350" cy="240" r="80" fill="none" stroke="#0e1a10" stroke-width="0.5" stroke-dasharray="4 4" />
+                    <circle cx="350" cy="240" r="160" fill="none" stroke="#0e1a10" stroke-width="0.5" stroke-dasharray="4 4" />
+                    <circle cx="350" cy="240" r="220" fill="none" stroke="#0e1a10" stroke-width="0.5" stroke-dasharray="4 4" />
+
+                    <!-- TRADE ROUTES -->
+                    <path d="M 350,100 C 280,120 220,150 150,180" class="route-trade" />
+                    <path d="M 390,105 C 440,130 500,150 560,160" class="route-trade" />
+                    <path d="M 140,195 C 130,240 125,290 130,340" class="route-trade" />
+                    <path d="M 565,175 C 570,220 575,280 570,330" class="route-trade" />
+                    <path d="M 155,360 C 200,380 260,400 320,410" class="route-trade" />
+                    <path d="M 555,345 C 500,380 440,400 380,415" class="route-trade" />
+                    <path d="M 350,120 L 350,220" class="route-trade" />
+                    <path d="M 330,240 C 270,270 200,300 150,340" class="route-trade" />
+                    <path d="M 350,260 L 350,395" class="route-trade" />
+
+                    <!-- PILGRIMAGE ROUTES -->
+                    <path d="M 325,240 C 260,280 190,310 140,345" class="route-pilgrim" />
+                    <path d="M 145,365 C 190,390 260,415 330,420" class="route-pilgrim" />
+                    <path d="M 370,400 C 375,340 365,280 355,260" class="route-pilgrim" />
+
+                    <!-- ANIMATED TRADERS -->
+                    <text fill="#4a7" style="font-size:8px; offset-path: path('M 350,100 C 280,120 220,150 150,180'); offset-rotate: 0deg; animation: tradeMove 12s linear infinite;">🥒</text>
+                    <text fill="#4a7" style="font-size:8px; offset-path: path('M 390,105 C 440,130 500,150 560,160'); offset-rotate: 0deg; animation: tradeMove 14s linear infinite; animation-delay: -5s;">🥒</text>
+                    <text fill="#4a7" style="font-size:8px; offset-path: path('M 155,360 C 200,380 260,400 320,410'); offset-rotate: 0deg; animation: tradeMove 11s linear infinite; animation-delay: -3s;">🥒</text>
+                    <text fill="#b84" style="font-size:8px; offset-path: path('M 325,240 C 260,280 190,310 140,345'); offset-rotate: 0deg; animation: tradeMove 16s linear infinite; animation-delay: -2s;">🥒</text>
+                    <text fill="#b84" style="font-size:8px; offset-path: path('M 145,365 C 190,390 260,415 330,420'); offset-rotate: 0deg; animation: tradeMove 16s linear infinite; animation-delay: -9s;">🥒</text>
+
+                    <!-- LOCATIONS -->
+
+                    <!-- SESSLINGEN -->
+                    <g class="t-loc-group loc-capital" data-loc="sesslingen" transform="translate(350, 95)">
+                        <circle class="loc-ring" r="14" />
+                        <circle class="loc-ring" r="20" style="stroke-dasharray: 3 3;" />
+                        <circle class="loc-dot" r="5" filter="url(#glow)" />
+                        <text class="loc-label" x="0" y="-22" text-anchor="middle" style="font-size:13px; fill:#6fc;">SESSLINGEN</text>
+                        <text class="loc-label" x="0" y="-11" text-anchor="middle" style="font-size:8px; fill:#3a7a5a;">[Zesselinga]</text>
+                    </g>
+
+                    <!-- HEIZUNGSTAL -->
+                    <g class="t-loc-group loc-holy" data-loc="heizungstal" transform="translate(350, 240)">
+                        <circle class="loc-ring" r="16" />
+                        <circle class="loc-ring" r="24" style="stroke-dasharray: 2 4;" />
+                        <circle class="loc-dot" r="5.5" filter="url(#holyGlow)" />
+                        <text class="loc-label" x="22" y="-10" style="fill:#da4;">HEIZUNGSTAL</text>
+                        <text class="loc-label" x="22" y="2" style="font-size:8px; fill:#8a6a2a;">⚡ Heiligtum</text>
+                    </g>
+
+                    <!-- SKATINGA -->
+                    <g class="t-loc-group loc-town" data-loc="skatinga" transform="translate(135, 175)">
+                        <circle class="loc-ring" r="12" />
+                        <circle class="loc-dot" r="4" />
+                        <text class="loc-label" x="-18" y="-14" text-anchor="end">SKATINGA</text>
+                    </g>
+
+                    <!-- LAMPINGEN -->
+                    <g class="t-loc-group loc-town" data-loc="lampingen" transform="translate(570, 160)">
+                        <circle class="loc-ring" r="12" />
+                        <circle class="loc-dot" r="4" />
+                        <text class="loc-label" x="18" y="-14">LAMPINGEN</text>
+                    </g>
+
+                    <!-- HOCKERHAUSEN -->
+                    <g class="t-loc-group loc-holy" data-loc="hockerhausen" transform="translate(130, 350)">
+                        <circle class="loc-ring" r="16" />
+                        <circle class="loc-ring" r="24" style="stroke-dasharray: 2 4;" />
+                        <circle class="loc-dot" r="5.5" filter="url(#holyGlow)" />
+                        <text class="loc-label" x="-20" y="-12" text-anchor="end" style="fill:#da4;">HOCKERHAUSEN</text>
+                        <text class="loc-label" x="-20" y="0" text-anchor="end" style="font-size:8px; fill:#8a6a2a;">🪑 Heiligtum</text>
+                    </g>
+
+                    <!-- BAD BODEN -->
+                    <g class="t-loc-group loc-town" data-loc="badboden" transform="translate(575, 335)">
+                        <circle class="loc-ring" r="12" />
+                        <circle class="loc-dot" r="4" />
+                        <text class="loc-label" x="18" y="-8">BAD BODEN</text>
+                        <text class="loc-label" x="18" y="4" style="font-size:8px; fill:#2a5a3a;">Kurort</text>
+                    </g>
+
+                    <!-- FENSTERDORF -->
+                    <g class="t-loc-group loc-holy" data-loc="fensterdorf" transform="translate(350, 415)">
+                        <circle class="loc-ring" r="16" />
+                        <circle class="loc-ring" r="24" style="stroke-dasharray: 2 4;" />
+                        <circle class="loc-dot" r="5.5" filter="url(#holyGlow)" />
+                        <text class="loc-label" x="0" y="24" text-anchor="middle" style="fill:#da4;">FENSTERDORF</text>
+                        <text class="loc-label" x="0" y="35" text-anchor="middle" style="font-size:8px; fill:#8a6a2a;">🪟 Das Fenster</text>
+                    </g>
+
+                    <!-- OUTPOSTS -->
+                    <g class="t-loc-group loc-outpost" data-loc="gurkenhain" transform="translate(75, 70)">
+                        <circle class="loc-ring" r="10" />
+                        <circle class="loc-dot" r="3" />
+                        <text class="loc-label" x="12" y="-6" style="fill:#3a6a4a;">Gurkenhain</text>
+                    </g>
+                    <g class="t-loc-group loc-outpost" data-loc="steckdosia" transform="translate(640, 240)">
+                        <circle class="loc-ring" r="10" />
+                        <circle class="loc-dot" r="3" />
+                        <text class="loc-label" x="-14" y="-10" text-anchor="end" style="fill:#3a6a4a;">Steckdosia</text>
+                    </g>
+                    <g class="t-loc-group loc-outpost" data-loc="grenzwacht" transform="translate(200, 440)">
+                        <circle class="loc-ring" r="10" />
+                        <circle class="loc-dot" r="3" />
+                        <text class="loc-label" x="0" y="-12" text-anchor="middle" style="fill:#3a6a4a;">Grenzwacht</text>
+                    </g>
+                    <g class="t-loc-group loc-outpost" data-loc="fernblick" transform="translate(630, 60)">
+                        <circle class="loc-ring" r="10" />
+                        <circle class="loc-dot" r="3" />
+                        <text class="loc-label" x="-14" y="-8" text-anchor="end" style="fill:#3a6a4a;">Fernblick</text>
+                    </g>
+
+                    <!-- COMPASS -->
+                    <g transform="translate(630, 440)">
+                        <line x1="0" y1="-18" x2="0" y2="18" stroke="#1a3828" stroke-width="0.8" />
+                        <line x1="-18" y1="0" x2="18" y2="0" stroke="#1a3828" stroke-width="0.8" />
+                        <text class="compass-text" x="0" y="-22" text-anchor="middle">N</text>
+                        <text class="compass-text" x="0" y="28" text-anchor="middle">S</text>
+                        <text class="compass-text" x="-24" y="4" text-anchor="middle">W</text>
+                        <text class="compass-text" x="24" y="4" text-anchor="middle">O</text>
+                    </g>
+
+                    <!-- SCALE BAR -->
+                    <g transform="translate(60, 450)">
+                        <line x1="0" y1="0" x2="60" y2="0" stroke="#1a3828" stroke-width="1" />
+                        <line x1="0" y1="-3" x2="0" y2="3" stroke="#1a3828" stroke-width="1" />
+                        <line x1="60" y1="-3" x2="60" y2="3" stroke="#1a3828" stroke-width="1" />
+                        <text class="scale-text" x="30" y="12" text-anchor="middle">≈ 1m (Gurkenmaß)</text>
+                    </g>
+
+                    <text x="350" y="475" text-anchor="middle" font-family="'VT323', monospace" font-size="9" fill="#121a14" letter-spacing="8">
+                        VOLLSTÄNDIG VON DEUTSCHLAND UMGEBEN
+                    </text>
+                </svg>
+            </div>
+
+            <div class="taktisch-info" id="taktisch-info">
+                <div class="info-title" id="taktisch-title">Wähle einen Ort</div>
+                <div class="info-type" id="taktisch-type">TAKTISCHE KARTE</div>
+                <div class="info-desc" id="taktisch-desc">Klicke auf einen Ort um Details zu sehen. Die Karte zeigt alle Siedlungen, Heiligtümer und Handelsrouten der Republik Gurkistan.</div>
+                <div class="info-resources" id="taktisch-resources"></div>
+            </div>
+
+            <div class="taktisch-footer">
+                Verfassung §7: Die Karte ist das Territorium. Das Territorium ist 6m².<br>
+                Kartenprojektion: Gurko-Merkator · Maßstab variabel · Alle Entfernungen in Gurkenlängen
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // ============================================
+    // LOCATION DATA
+    // ============================================
+    const LOCATIONS = {
+        sesslingen: {
+            name: 'Sesslingen (Zesselinga)',
+            type: 'Hauptstadt',
+            icon: '👑',
+            desc: 'Hauptstadt der Republik Gurkistan. Sitz des Pla\'khuun. Hier wurde die Verfassung unterzeichnet und die erste Gurke gesalzen. Das politische und kulturelle Zentrum — soweit man bei 6m² von "Zentrum" reden kann.',
+            resources: ['👑 Regierung', '📜 Meme-Akademie', '🥒 Gurkenlager'],
+            population: '8 Gurken',
+            founded: 'Jahr 0 der Republik',
+            antonName: '👑 Sesslingen (Hauptstadt)',
+            antonDesc: 'Der Thron der Republik! Hier sitzt der Pla\'khuun und regiert über alle 6 Quadratmeter. Von hier aus werden Dekrete erlassen und Gurken gesalzen.'
+        },
+        heizungstal: {
+            name: 'Heizungstal',
+            type: 'Heiligtum',
+            icon: '⚡',
+            desc: 'Das Erste Heiligtum. Hier steht die Große Heizung — mystische Wärmequelle und spirituelles Zentrum Gurkistans. Pilger kommen aus allen Ecken der 6m², um ihre Gurken zu wärmen. Im Winter doppelte Bedeutung.',
+            resources: ['🔥 Wärme +3/Runde', '🙏 Pilgerziel', '⚡ Energie'],
+            population: '3 Gurken (+ Pilger)',
+            founded: 'Vor der Republik',
+            antonName: '⚡ Heizungstal (1. Heiligtum)',
+            antonDesc: 'Die Große Heizung! Mystische Wärmequelle und spirituelles Zentrum. Pilger kommen hierher um ihre Gurken zu wärmen. Im Winter: doppelt heilig.'
+        },
+        skatinga: {
+            name: 'Skatinga',
+            type: 'Siedlung',
+            icon: '🛹',
+            desc: 'Handelsmetropole im Nordwesten. Bekannt für geschmeidige Oberflächen und den größten Marktplatz Gurkistans (12cm²). Hier werden die besten Deals gemacht und die schlechtesten Witze erzählt (aber keine Fischwitze — Verfassung §3).',
+            resources: ['💰 Handel +2/Runde', '🛹 Mobilität', '🎪 Marktplatz'],
+            population: '5 Gurken',
+            founded: 'Jahr 2 der Republik',
+            antonName: '🛹 Skatinga',
+            antonDesc: 'Handelsmetropole mit glatten Oberflächen. Größter Marktplatz Gurkistans (12cm²). Hier werden Deals gemacht — aber keine Fischwitze! (§3)'
+        },
+        lampingen: {
+            name: 'Lampingen',
+            type: 'Siedlung',
+            icon: '💡',
+            desc: 'Erleuchtete Siedlung im Nordosten. Die Große Lampe spendet Licht und zieht Nachtgurken an. Forschungszentrum für Photosynthese-optimierte Gurkenproduktion. Motto: "Im Licht der Lampe sind alle Gurken gleich."',
+            resources: ['💡 Licht +2/Runde', '🔬 Forschung', '🌱 Gurkenfarm'],
+            population: '4 Gurken',
+            founded: 'Jahr 3 der Republik',
+            antonName: '💡 Lampingen',
+            antonDesc: 'Die erleuchtete Siedlung! Die Große Lampe spendet Licht und zieht Nachtgurken an. Motto: "Im Licht der Lampe sind alle Gurken gleich."'
+        },
+        hockerhausen: {
+            name: 'Hockerhausen',
+            type: 'Heiligtum',
+            icon: '🪑',
+            desc: 'Das Zweite Heiligtum. Hier thront der Heilige Hocker — Symbol für Beständigkeit und die Kunst des Sitzens. Wer hier Platz nimmt, soll Erleuchtung erfahren. Oder zumindest müde Gurken.',
+            resources: ['🪑 Ruhe +3/Runde', '🙏 Pilgerziel', '🧘 Meditation'],
+            population: '2 Gurken (+ Pilger)',
+            founded: 'Vor der Republik',
+            antonName: '🪑 Hockerhausen (2. Heiligtum)',
+            antonDesc: 'Der Heilige Hocker! Symbol für Beständigkeit und die Kunst des Sitzens. Wer hier Platz nimmt, erfährt Erleuchtung. Oder wird müde.'
+        },
+        badboden: {
+            name: 'Bad Boden',
+            type: 'Siedlung',
+            icon: '🛁',
+            desc: 'Kurort im Osten. Berühmt für den flachen, ebenen Boden — in Gurkistan ein seltener Luxus. Hier kommen erschöpfte Gurken zur Erholung hin. Das Heilwasser (Kondenswasser von der Heizung) soll Wunder wirken.',
+            resources: ['🛁 Erholung +2/Runde', '💚 Gesundheit', '🏨 Kurklinik'],
+            population: '3 Gurken',
+            founded: 'Jahr 4 der Republik',
+            antonName: '🛁 Bad Boden (Kurort)',
+            antonDesc: 'Berühmt für den flachen, ebenen Boden — ein Luxus in Gurkistan! Erschöpfte Gurken kommen zur Erholung. Das Heilwasser wirkt Wunder.'
+        },
+        fensterdorf: {
+            name: 'Fensterdorf',
+            type: 'Heiligtum',
+            icon: '🪟',
+            desc: 'Das Dritte Heiligtum. Hier befindet sich Das Fenster — Portal zur Außenwelt. Durch es können Gurken das mythische "Deutschland" beobachten, das Gurkistan vollständig umgibt. Ein Ort der Philosophie und Sehnsucht.',
+            resources: ['🪟 Weitblick +3/Runde', '🙏 Pilgerziel', '🔭 Observatorium'],
+            population: '2 Gurken (+ Pilger)',
+            founded: 'Vor der Republik',
+            antonName: '🪟 Fensterdorf (3. Heiligtum)',
+            antonDesc: 'Das Fenster — Portal zur Außenwelt! Hier können Gurken das mythische "Deutschland" beobachten. Ein Ort der Philosophie und Sehnsucht.'
+        },
+        gurkenhain: {
+            name: 'Gurkenhain',
+            type: 'Außenposten',
+            icon: '🌿',
+            desc: 'Abgelegener Außenposten im äußersten Nordwesten. Hier wachsen die wildesten Gurken. Grenzgebiet — manchmal verirren sich Bürger aus Deutschland hierher und wundern sich.',
+            resources: ['🌿 Wildgurken +1/Runde'],
+            population: '1 Gurke (Grenzwächter)',
+            founded: 'Jahr 6 der Republik',
+            antonName: '🌿 Gurkenhain',
+            antonDesc: 'Hier wachsen die wildesten Gurken. Grenzgebiet — manchmal verirren sich Bürger aus Deutschland hierher.'
+        },
+        steckdosia: {
+            name: 'Steckdosia',
+            type: 'Außenposten',
+            icon: '🔌',
+            desc: 'Energieversorgungsposten am Ostrand. Hier wird die mysteriöse Kraft aus der Wand angezapft. Strategisch wichtig — ohne Steckdosia keine Heizung, keine Lampe, kein Gurkistan.',
+            resources: ['🔌 Strom +1/Runde', '⚡ Strategisch'],
+            population: '1 Gurke (Techniker)',
+            founded: 'Jahr 5 der Republik',
+            antonName: '🔌 Steckdosia',
+            antonDesc: 'Hier wird die mysteriöse Kraft aus der Wand angezapft. Ohne Steckdosia: keine Heizung, keine Lampe.'
+        },
+        grenzwacht: {
+            name: 'Grenzwacht',
+            type: 'Außenposten',
+            icon: '🛡️',
+            desc: 'Südlicher Grenzposten. Bewacht die Grenze zu Deutschland (die ca. 40cm entfernt verläuft). Hier wird kontrolliert, was rein- und rausgeht. Motto: "Bis hierhin und nicht weiter. Also nochmal 40cm."',
+            resources: ['🛡️ Verteidigung +1/Runde'],
+            population: '1 Gurke (Wächter)',
+            founded: 'Jahr 7 der Republik',
+            antonName: '🛡️ Grenzwacht',
+            antonDesc: 'Bewacht die Grenze zu Deutschland (40cm entfernt). Motto: "Bis hierhin und nicht weiter."'
+        },
+        fernblick: {
+            name: 'Fernblick',
+            type: 'Außenposten',
+            icon: '🔭',
+            desc: 'Höchster Punkt Gurkistans (geschätzte 47cm über Bodenniveau — auf einem Regal). Von hier kann man fast bis zur Küche sehen. Meteorologische Station und Frühwarnsystem.',
+            resources: ['🔭 Aufklärung +1/Runde', '🌤️ Wetter'],
+            population: '1 Gurke (Späher)',
+            founded: 'Jahr 8 der Republik',
+            antonName: '🔭 Fernblick',
+            antonDesc: 'Höchster Punkt Gurkistans (47cm). Von hier kann man fast bis zur Küche sehen!'
+        }
+    };
+
+    // ============================================
+    // MODE TOGGLE
+    // ============================================
+    let currentMode = 'anton';
+
+    function toggleMode() {
+        const body = document.body;
+        const btn = document.getElementById('toggle-btn');
+        const toggleText = document.getElementById('toggle-text');
+        const toggleIcon = btn.querySelector('.toggle-icon');
+
+        if (currentMode === 'anton') {
+            body.classList.remove('mode-anton');
+            body.classList.add('mode-taktisch');
+            toggleText.textContent = 'Handgezeichnet';
+            toggleIcon.textContent = '✏️';
+            currentMode = 'taktisch';
+        } else {
+            body.classList.remove('mode-taktisch');
+            body.classList.add('mode-anton');
+            toggleText.textContent = 'Taktisch';
+            toggleIcon.textContent = '🗺️';
+            currentMode = 'anton';
+        }
+    }
+
+    // ============================================
+    // TAKTISCH VIEW LOGIC
+    // ============================================
+    let selectedTaktisch = null;
+
+    document.querySelectorAll('.t-loc-group').forEach(g => {
+        g.addEventListener('click', function(e) {
+            e.stopPropagation();
+            selectTaktisch(this);
+        });
+    });
+
+    function selectTaktisch(el) {
+        const prev = document.querySelector('.t-loc-group.selected');
+        if (prev) prev.classList.remove('selected');
+
+        const locId = el.dataset.loc;
+        el.classList.add('selected');
+        selectedTaktisch = locId;
+
+        const loc = LOCATIONS[locId];
+        if (!loc) return;
+
+        const panel = document.getElementById('taktisch-info');
+        panel.classList.add('active');
+
+        document.getElementById('taktisch-title').textContent = loc.icon + ' ' + loc.name;
+        document.getElementById('taktisch-type').textContent =
+            loc.type + ' · ' + loc.population + ' · Gegründet: ' + loc.founded;
+        document.getElementById('taktisch-desc').textContent = loc.desc;
+
+        document.getElementById('taktisch-resources').innerHTML =
+            loc.resources.map(r => '<span class="info-res-item">' + r + '</span>').join('');
+    }
+
+    // ============================================
+    // ANTON VIEW LOGIC
+    // ============================================
+    document.querySelectorAll('.a-loc-group').forEach(g => {
+        g.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const locId = this.dataset.loc;
+            const loc = LOCATIONS[locId];
+            if (loc) {
+                document.getElementById('anton-title').textContent = loc.antonName || loc.name;
+                document.getElementById('anton-desc').textContent = loc.antonDesc || loc.desc;
+            }
+        });
+    });
+
+    // ============================================
+    // INIT
+    // ============================================
+    console.log('🥒 Gurkistan Karte geladen');
+    console.log('Mode: ' + currentMode);
+    console.log('Orte: ' + Object.keys(LOCATIONS).length);
+    </script>
+</body>
+</html>
