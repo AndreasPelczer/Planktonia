@@ -1,6 +1,6 @@
 // ============================================
 // GURKISTAN – DAS SPIEL
-// View: DOM-Rendering, Animationen, UI
+// View: DOM-Rendering, Karten-Intermezzo, UI
 // ============================================
 
 class GameView {
@@ -8,15 +8,17 @@ class GameView {
     constructor(viewModel) {
         this.vm = viewModel;
         this.vm.subscribe(this);
+        this.selectedLoc = null;
 
         // DOM-Elemente cachen
         this.els = {
             yearDisplay: document.getElementById('year-display'),
             statusBar: document.getElementById('status-bar'),
-            gurken: document.getElementById('gurken'),
-            zufriedenheit: document.getElementById('zufriedenheit'),
-            memes: document.getElementById('memes'),
-            buerger: document.getElementById('buerger'),
+            gurken: document.getElementById('res-gurken'),
+            steckdosen: document.getElementById('res-steckdosen'),
+            geldscheine: document.getElementById('res-geldscheine'),
+            zufriedenheit: document.getElementById('res-zufriedenheit'),
+            buerger: document.getElementById('res-buerger'),
             eventLog: document.getElementById('event-log'),
             decisionButtons: document.getElementById('decision-buttons'),
             nextYear: document.getElementById('next-year'),
@@ -25,10 +27,16 @@ class GameView {
             gameOverReason: document.getElementById('game-over-reason'),
             finalYears: document.getElementById('final-years'),
             victory: document.getElementById('victory'),
-            yearTransition: document.getElementById('year-transition'),
-            transitionYear: document.getElementById('transition-year'),
-            transitionSummary: document.getElementById('transition-summary'),
-            transitionEvent: document.getElementById('transition-event'),
+            // Karten-Intermezzo
+            mapOverlay: document.getElementById('map-intermezzo'),
+            mapTitle: document.getElementById('map-title'),
+            mapSub: document.getElementById('map-sub'),
+            mapInfo: document.getElementById('map-info'),
+            mapInfoTitle: document.getElementById('map-info-title'),
+            mapInfoType: document.getElementById('map-info-type'),
+            mapInfoDesc: document.getElementById('map-info-desc'),
+            mapSummary: document.getElementById('map-summary'),
+            mapContinue: document.getElementById('map-continue'),
         };
 
         this.bindEvents();
@@ -39,9 +47,22 @@ class GameView {
     // EVENT BINDING
     // ============================================
     bindEvents() {
-        // "Nächstes Jahr" Button
+        // "Naechstes Jahr" -> Karten-Intermezzo
         this.els.nextYear.addEventListener('click', () => {
-            this.showYearTransition();
+            this.showMapIntermezzo();
+        });
+
+        // Karte: Weiter-Button
+        this.els.mapContinue.addEventListener('click', () => {
+            this.hideMapIntermezzo();
+        });
+
+        // Karte: Ort-Klicks
+        document.querySelectorAll('.t-loc-group').forEach(group => {
+            group.addEventListener('click', () => {
+                const locId = group.getAttribute('data-loc');
+                this.selectLocation(locId, group);
+            });
         });
 
         // Restart-Buttons (Game Over & Victory)
@@ -73,29 +94,30 @@ class GameView {
     updateYear(state) {
         this.els.yearDisplay.textContent = `Jahr ${state.year} der Republik`;
 
-        // Farbe je nach Fortschritt
         if (state.year >= 20) {
             this.els.yearDisplay.style.borderColor = '#da4';
             this.els.yearDisplay.style.color = '#da4';
         } else {
-            this.els.yearDisplay.style.borderColor = '#4a7';
+            this.els.yearDisplay.style.borderColor = '#2a5a3a';
             this.els.yearDisplay.style.color = '';
         }
     }
 
     // ============================================
-    // RESSOURCEN
+    // RESSOURCEN (5 Stueck)
     // ============================================
     updateResources(state) {
         this.animateValue(this.els.gurken, state.gurken);
+        this.animateValue(this.els.steckdosen, state.steckdosen);
+        this.animateValue(this.els.geldscheine, state.geldscheine);
         this.animateValue(this.els.zufriedenheit, state.zufriedenheit);
-        this.animateValue(this.els.memes, state.memes);
         this.animateValue(this.els.buerger, state.buerger);
 
         // Farb-Klassen
         this.setResourceClass(this.els.gurken, state.gurken, 30, 15);
+        this.setResourceClass(this.els.steckdosen, state.steckdosen, 3, 1);
+        this.setResourceClass(this.els.geldscheine, state.geldscheine, 5, 2);
         this.setResourceClass(this.els.zufriedenheit, state.zufriedenheit, 25, 10);
-        this.setResourceClass(this.els.memes, state.memes, 5, 2);
         this.setResourceClass(this.els.buerger, state.buerger, 10, 5);
     }
 
@@ -106,7 +128,6 @@ class GameView {
             return;
         }
 
-        // Kurze Animation: Wert hochzählen
         const diff = newVal - oldVal;
         const steps = Math.min(Math.abs(diff), 15);
         const stepTime = 300 / steps;
@@ -159,7 +180,6 @@ class GameView {
         this.els.eventLog.innerHTML = '';
         state.log.forEach(entry => {
             if (entry.text === '') {
-                // Leerzeile als Trenner
                 const spacer = document.createElement('div');
                 spacer.style.height = '8px';
                 this.els.eventLog.appendChild(spacer);
@@ -171,7 +191,6 @@ class GameView {
             this.els.eventLog.appendChild(div);
         });
 
-        // Nach unten scrollen
         this.els.eventLog.scrollTop = this.els.eventLog.scrollHeight;
     }
 
@@ -182,7 +201,6 @@ class GameView {
         this.els.decisionButtons.innerHTML = '';
 
         if (state.phase === 'event' && state.choices.length > 0) {
-            // Entscheidungs-Buttons anzeigen
             state.choices.forEach((choice, index) => {
                 const btn = document.createElement('button');
                 btn.textContent = choice.text;
@@ -190,11 +208,9 @@ class GameView {
                     this.vm.handleChoice(index);
                 });
 
-                // Build-Buttons besonders markieren
                 if (choice.effects && choice.effects.statusAdd) {
                     btn.classList.add('primary');
                 }
-                // Teure Optionen markieren
                 if (choice.effects && choice.effects.gurken && choice.effects.gurken < -20) {
                     btn.classList.add('repair');
                 }
@@ -205,16 +221,14 @@ class GameView {
             this.els.nextYear.style.display = 'none';
 
         } else if (state.phase === 'result') {
-            // "Nächstes Jahr" anzeigen
             this.els.nextYear.style.display = '';
 
-            // Button-Text anpassen
             if (state.year >= CONFIG.VICTORY_YEAR) {
-                this.els.nextYear.textContent = '🏆 Das letzte Jahr beginnt...';
+                this.els.nextYear.textContent = '🗺️ Das letzte Jahr beginnt...';
             } else if (state.year >= 20) {
-                this.els.nextYear.textContent = `➡️ Jahr ${state.year + 1} — fast geschafft!`;
+                this.els.nextYear.textContent = `🗺️ Jahr ${state.year + 1} — fast geschafft!`;
             } else {
-                this.els.nextYear.textContent = `➡️ Jahr ${state.year + 1} beginnen`;
+                this.els.nextYear.textContent = `🗺️ Karte ansehen & Jahr ${state.year + 1}`;
             }
         } else {
             this.els.nextYear.style.display = 'none';
@@ -238,41 +252,94 @@ class GameView {
     }
 
     // ============================================
-    // JAHRESWECHSEL-ANIMATION
+    // KARTEN-INTERMEZZO
     // ============================================
-    showYearTransition() {
+    showMapIntermezzo() {
         const state = this.vm.getViewState();
         const nextYear = state.year + 1;
 
-        this.els.transitionYear.textContent = `Jahr ${nextYear}`;
-        this.els.transitionSummary.textContent = state.yearSummary || 'Die Zeit vergeht...';
+        // Header aktualisieren
+        this.els.mapSub.textContent = `TAKTISCHE ÜBERSICHT · JAHR ${nextYear}`;
 
-        // Event-Preview stylen
-        const preview = this.els.transitionEvent;
-        if (state.gurken < 30 || state.zufriedenheit < 20 || state.buerger < 10) {
-            preview.className = 'event-preview bad';
-            preview.textContent = '⚠️ Dunkle Wolken über Gurkistan...';
-        } else if (state.zufriedenheit > 60 && state.gurken > 80) {
-            preview.className = 'event-preview good';
-            preview.textContent = '☀️ Gute Zeiten für die Republik!';
-        } else {
-            preview.className = 'event-preview neutral';
-            preview.textContent = 'Was bringt das neue Jahr?';
+        // Info-Panel zuruecksetzen
+        this.els.mapInfoTitle.textContent = 'Klicke einen Ort';
+        this.els.mapInfoType.textContent = '';
+        this.els.mapInfoDesc.textContent = 'Die Karte zeigt alle Siedlungen und Routen der Republik.';
+        this.els.mapInfo.classList.remove('active');
+
+        // Auswahl zuruecksetzen
+        document.querySelectorAll('.t-loc-group.selected').forEach(g => {
+            g.classList.remove('selected');
+        });
+        this.selectedLoc = null;
+
+        // Zusammenfassung
+        const summary = state.yearSummary || 'Die Republik besteht.';
+        this.els.mapSummary.textContent = summary;
+        this.els.mapSummary.classList.remove('good', 'bad');
+
+        if (state.zufriedenheit > 60 && state.gurken > 60) {
+            this.els.mapSummary.classList.add('good');
+        } else if (state.gurken < 30 || state.zufriedenheit < 20 || state.buerger < 10) {
+            this.els.mapSummary.classList.add('bad');
         }
 
-        // Transition einblenden
-        this.els.yearTransition.classList.add('active');
+        // Weiter-Button Text
+        if (nextYear >= CONFIG.VICTORY_YEAR) {
+            this.els.mapContinue.textContent = '🏆 Das letzte Jahr beginnt...';
+        } else {
+            this.els.mapContinue.textContent = `➡️ Jahr ${nextYear} beginnen`;
+        }
 
-        // Schneefall bei hohem Jahr (Winter-Feeling)
+        // Schneefall bei jedem dritten Jahr
         if (nextYear % 3 === 0) {
             this.triggerSnowfall();
         }
 
-        // Nach Verzögerung: nächstes Jahr starten
+        // Overlay einblenden
+        this.els.mapOverlay.classList.add('active');
+    }
+
+    hideMapIntermezzo() {
+        this.els.mapOverlay.classList.remove('active');
+
+        // Kurz warten bis Fade-Out fertig, dann naechstes Jahr
         setTimeout(() => {
-            this.els.yearTransition.classList.remove('active');
             this.vm.nextYear();
-        }, 2000);
+        }, 600);
+    }
+
+    // ============================================
+    // ORT-AUSWAHL AUF DER KARTE
+    // ============================================
+    selectLocation(locId, groupEl) {
+        const loc = LOCATIONS[locId];
+        if (!loc) return;
+
+        // Vorherige Auswahl entfernen
+        document.querySelectorAll('.t-loc-group.selected').forEach(g => {
+            g.classList.remove('selected');
+        });
+
+        // Neue Auswahl
+        groupEl.classList.add('selected');
+        this.selectedLoc = locId;
+
+        // Info-Panel fuellen
+        this.els.mapInfoTitle.textContent = `${loc.icon} ${loc.name}`;
+        this.els.mapInfoType.textContent = loc.type;
+        this.els.mapInfoDesc.textContent = loc.desc;
+        this.els.mapInfo.classList.add('active');
+
+        // Ressourcen als Tags anhaengen
+        if (loc.resources && loc.resources.length > 0) {
+            const resLine = document.createElement('div');
+            resLine.style.marginTop = '6px';
+            resLine.style.fontSize = '0.9rem';
+            resLine.style.color = '#3a6a4a';
+            resLine.textContent = loc.resources.join(' · ');
+            this.els.mapInfoDesc.appendChild(resLine);
+        }
     }
 
     // ============================================
@@ -289,8 +356,6 @@ class GameView {
             flake.style.animationDuration = (3 + Math.random() * 4) + 's';
             flake.style.animationDelay = Math.random() * 2 + 's';
             document.body.appendChild(flake);
-
-            // Aufräumen
             setTimeout(() => flake.remove(), 8000);
         }
     }
